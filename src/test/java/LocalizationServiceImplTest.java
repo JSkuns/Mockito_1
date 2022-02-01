@@ -1,7 +1,5 @@
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import ru.netology.entity.Country;
@@ -48,4 +46,5 @@ public class LocalizationServiceImplTest {
             System.out.println("Other country");
         }
     }
+
 }

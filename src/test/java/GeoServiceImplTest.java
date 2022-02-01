@@ -1,7 +1,12 @@
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import ru.netology.geo.GeoService;
 import ru.netology.geo.GeoServiceImpl;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,5 +50,17 @@ public class GeoServiceImplTest {
             assertTrue(str.startsWith("96."));
             System.out.println("Test " + str + " is OK... (USA)");
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("coordinates")
+    void byCoordinatesTest(Double x, Double y) {
+        GeoService sut = new GeoServiceImpl();
+        Assertions.assertThrows(RuntimeException.class,
+                () -> sut.byCoordinates(x, y));
+    }
+
+    private static Stream<Arguments> coordinates() {
+        return Stream.of(Arguments.of(11.1, 22.22), Arguments.of(33.33, 44.4));
     }
 }
