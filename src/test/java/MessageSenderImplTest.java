@@ -1,16 +1,21 @@
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
+import ru.netology.entity.Country;
+import ru.netology.entity.Location;
 import ru.netology.geo.GeoService;
-import ru.netology.geo.GeoServiceImpl;
 import ru.netology.i18n.LocalizationService;
-import ru.netology.i18n.LocalizationServiceImpl;
 import ru.netology.sender.MessageSender;
 import ru.netology.sender.MessageSenderImpl;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
+
+import static org.mockito.ArgumentMatchers.*;
 
 public class MessageSenderImplTest {
 
@@ -33,64 +38,59 @@ public class MessageSenderImplTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"127.0.0.1", "172.0.32.11", "96.44.183.149", "155.1.1.1", "172.1.1.1", "127.2.2.2"})
-    void rusTest(String str) {
+    @ValueSource(strings = {"172.1.1.1", "172.2.2.2", "172.3.3.3"})
+    void rusTest(String ip) {
+        GeoService geoService = Mockito.mock(GeoService.class);
+        LocalizationService localizationService = Mockito.mock(LocalizationService.class);
+        Location location = Mockito.mock(Location.class);
 
-        // создаём объект MessageSender заглушку
-        MessageSender messageSender = Mockito.mock(MessageSenderImpl.class);
-        Map<String, String> mapExp = new HashMap<>();
-        mapExp.put(MessageSenderImpl.IP_ADDRESS_HEADER, str);
-        Mockito.when(messageSender.send(mapExp)).thenReturn("Добро пожаловать");
+        MessageSender sut = new MessageSenderImpl(geoService, localizationService);
 
-        // определим ожидаемый ответ, равный строке 'Добро пожаловать'
-        String expected = messageSender.send(mapExp);
+        Mockito.when(location.getCountry()).thenReturn(Country.RUSSIA);
+        Mockito.when(geoService.byIp(startsWith("172."))).thenReturn(location);
+        Mockito.when(localizationService.locale(Country.RUSSIA)).thenReturn("Добро пожаловать");
 
-        // actual
-        String actual;
+        Map<String, String> headers = new HashMap<>();
+        headers.put(MessageSenderImpl.IP_ADDRESS_HEADER, ip);
 
-        // создадим всё как в классе Main
-        Map<String, String> mapAct = new HashMap<>();
-        mapAct.put(MessageSenderImpl.IP_ADDRESS_HEADER, str);
-        GeoService geo = new GeoServiceImpl();
-        LocalizationService loc = new LocalizationServiceImpl();
-
-        // проверяем если ip начинается с '172.'
-        if (str.startsWith("172.")) {
-            MessageSender sut = new MessageSenderImpl(geo, loc);
-            actual = sut.send(mapAct);
-            Assertions.assertEquals(expected, actual);
-            System.out.println(" -> Test RUS " + str + " - is OK...");
-        }
+        String expected = "Добро пожаловать";
+        String actual = sut.send(headers);
+        Assertions.assertEquals(expected, actual);
+        System.out.println(" = Test " + ip + " is OK...");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"127.0.0.1", "172.0.32.11", "96.44.183.149", "155.1.1.1", "172.1.1.1", "127.2.2.2"})
-    void engTest(String str) {
+    @MethodSource("source")
+    void usaTest(String text, String ip) {
+        GeoService geoService = Mockito.mock(GeoService.class);
+        LocalizationService localizationService = Mockito.mock(LocalizationService.class);
+        Location locationRUS = Mockito.mock(Location.class);
+        Location locationUSA = Mockito.mock(Location.class);
 
-        // создаём объект MessageSender заглушку
-        MessageSender messageSender = Mockito.mock(MessageSenderImpl.class);
-        Map<String, String> mapExp = new HashMap<>();
-        mapExp.put(MessageSenderImpl.IP_ADDRESS_HEADER, str);
-        Mockito.when(messageSender.send(mapExp)).thenReturn("Welcome");
+        MessageSender sut = new MessageSenderImpl(geoService, localizationService);
 
-        // определим ожидаемый ответ, равный строке 'Welcome'
-        String expected = messageSender.send(mapExp);
+        Mockito.when(locationRUS.getCountry()).thenReturn(Country.RUSSIA);
+        Mockito.when(geoService.byIp(startsWith("172."))).thenReturn(locationRUS);
+        Mockito.when(localizationService.locale(Country.RUSSIA)).thenReturn("Добро пожаловать");
 
-        // actual
-        String actual;
+        Mockito.when(locationUSA.getCountry()).thenReturn(Country.USA);
+        Mockito.when(geoService.byIp(startsWith("96."))).thenReturn(locationUSA);
+        Mockito.when(localizationService.locale(Country.USA)).thenReturn("Welcome");
 
-        // создадим всё как в классе Main
-        Map<String, String> mapAct = new HashMap<>();
-        mapAct.put(MessageSenderImpl.IP_ADDRESS_HEADER, str);
-        GeoService geo = new GeoServiceImpl();
-        LocalizationService loc = new LocalizationServiceImpl();
+        Map<String, String> headers = new HashMap<>();
+        headers.put(MessageSenderImpl.IP_ADDRESS_HEADER, ip);
 
-        // проверяем если ip начинается с '96.'
-        if (str.startsWith("96.")) {
-            MessageSender sut = new MessageSenderImpl(geo, loc);
-            actual = sut.send(mapAct);
-            Assertions.assertEquals(expected, actual);
-            System.out.println(" -> Test ENG " + str + " - is OK...");
-        }
+        String actual = sut.send(headers);
+        Assertions.assertEquals(text, actual);
+        System.out.println(" = " + text + " " + ip + " is OK...");
     }
+    private static Stream<Arguments> source() {
+        String rusText = "Добро пожаловать";
+        String engText = "Welcome";
+        return Stream.of(Arguments.of(rusText, "172.1.1.1"),
+                Arguments.of(rusText, "172.2.2.2"),
+                Arguments.of(engText, "96.1.1.1"),
+                Arguments.of(engText, "96.1.1.1"));
+    }
+
 }

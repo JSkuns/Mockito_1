@@ -2,14 +2,15 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
+import ru.netology.entity.Country;
+import ru.netology.entity.Location;
 import ru.netology.geo.GeoService;
 import ru.netology.geo.GeoServiceImpl;
 
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GeoServiceImplTest {
 
@@ -32,24 +33,43 @@ public class GeoServiceImplTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"127.0.0.1", "172.0.32.11", "96.44.183.149", "155.1.1.1", "172.1.1.1.", "96.2.2.2"})
-    void byIpTest(String str) {
-        if (GeoServiceImpl.LOCALHOST.equals(str)) {
-            assertEquals(str, GeoServiceImpl.LOCALHOST);
-            System.out.println("Test " + str + " is OK... (LOCALHOST)");
-        } else if (GeoServiceImpl.MOSCOW_IP.equals(str)) {
-            assertEquals(str, GeoServiceImpl.MOSCOW_IP);
-            System.out.println("Test " + str + " is OK... (MOSCOW)");
-        } else if (GeoServiceImpl.NEW_YORK_IP.equals(str)) {
-            assertEquals(str, GeoServiceImpl.NEW_YORK_IP);
-            System.out.println("Test " + str + " is OK... (NEW_YORK)");
-        } else if (str.startsWith("172.")) {
-            assertTrue(str.startsWith("172."));
-            System.out.println("Test " + str + " is OK... (RUS)");
-        } else if (str.startsWith("96.")) {
-            assertTrue(str.startsWith("96."));
-            System.out.println("Test " + str + " is OK... (USA)");
-        }
+    @MethodSource("city")
+    void byIpCityTest(String ip, String city) {
+        assertEquals(ip, city);
+        System.out.println("City test " + ip + " is OK...");
+    }
+    private static Stream<Arguments> city() {
+        return Stream.of(Arguments.of("127.0.0.1", GeoServiceImpl.LOCALHOST),
+                Arguments.of("172.0.32.11", GeoServiceImpl.MOSCOW_IP),
+                Arguments.of("96.44.183.149", GeoServiceImpl.NEW_YORK_IP));
+    }
+
+    @ParameterizedTest
+    @MethodSource("rus")
+    void byIpRusTest(String ip) {
+        GeoService sut = new GeoServiceImpl();
+        Location location = Mockito.mock(Location.class);
+        Mockito.when(location.getCountry()).thenReturn(Country.RUSSIA);
+        assertEquals(sut.byIp(ip).getCountry(), location.getCountry());
+        System.out.println("RUS test " + ip + " is OK... (RUS)");
+    }
+    private static Stream<Arguments> rus() {
+        return Stream.of(Arguments.of("172.1.1.1"),
+                Arguments.of("172.2.2.2"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("usa")
+    void byIpUsaTest(String ip) {
+        GeoService sut = new GeoServiceImpl();
+        Location location = Mockito.mock(Location.class);
+        Mockito.when(location.getCountry()).thenReturn(Country.USA);
+        assertEquals(sut.byIp(ip).getCountry(), location.getCountry());
+        System.out.println("USA test " + ip + " is OK... (USA)");
+    }
+    private static Stream<Arguments> usa() {
+        return Stream.of(Arguments.of("96.1.1.1"),
+                Arguments.of("96.2.2.2"));
     }
 
     @ParameterizedTest
@@ -58,9 +78,11 @@ public class GeoServiceImplTest {
         GeoService sut = new GeoServiceImpl();
         Assertions.assertThrows(RuntimeException.class,
                 () -> sut.byCoordinates(x, y));
+        System.out.println("Coordinates test is OK...");
+    }
+    private static Stream<Arguments> coordinates() {
+        return Stream.of(Arguments.of(11.1, 22.22),
+                Arguments.of(33.33, 44.4));
     }
 
-    private static Stream<Arguments> coordinates() {
-        return Stream.of(Arguments.of(11.1, 22.22), Arguments.of(33.33, 44.4));
-    }
 }
