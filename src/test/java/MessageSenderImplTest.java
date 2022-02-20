@@ -2,7 +2,6 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import ru.netology.entity.Country;
 import ru.netology.entity.Location;
@@ -38,59 +37,45 @@ public class MessageSenderImplTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"172.1.1.1", "172.2.2.2", "172.3.3.3"})
-    void rusTest(String ip) {
-        GeoService geoService = Mockito.mock(GeoService.class);
-        LocalizationService localizationService = Mockito.mock(LocalizationService.class);
-        Location location = Mockito.mock(Location.class);
-
-        MessageSender sut = new MessageSenderImpl(geoService, localizationService);
-
-        Mockito.when(location.getCountry()).thenReturn(Country.RUSSIA);
-        Mockito.when(geoService.byIp(startsWith("172."))).thenReturn(location);
-        Mockito.when(localizationService.locale(Country.RUSSIA)).thenReturn("Добро пожаловать");
-
-        Map<String, String> headers = new HashMap<>();
-        headers.put(MessageSenderImpl.IP_ADDRESS_HEADER, ip);
-
-        String expected = "Добро пожаловать";
-        String actual = sut.send(headers);
-        Assertions.assertEquals(expected, actual);
-        System.out.println(" = Test " + ip + " is OK...");
-    }
-
-    @ParameterizedTest
     @MethodSource("source")
-    void usaTest(String text, String ip) {
+    void sendTest(String text, String ip) {
+        // мокируем сервисы
         GeoService geoService = Mockito.mock(GeoService.class);
         LocalizationService localizationService = Mockito.mock(LocalizationService.class);
-        Location locationRUS = Mockito.mock(Location.class);
-        Location locationUSA = Mockito.mock(Location.class);
+        // мокируем их методы, чтобы получить необходимое ожидание
+        Mockito.when(geoService.byIp(Mockito.any()))
+                .thenReturn(new Location(null, Country.USA, null, 0));
+        Mockito.when(geoService.byIp(startsWith("172.")))
+                .thenReturn(new Location(null, Country.RUSSIA, null, 0));
 
+        Mockito.when(localizationService.locale(Mockito.any()))
+                .thenReturn("Welcome");
+        Mockito.when(localizationService.locale(Country.RUSSIA))
+                .thenReturn("Добро пожаловать");
+        // создаём объект с моками
         MessageSender sut = new MessageSenderImpl(geoService, localizationService);
-
-        Mockito.when(locationRUS.getCountry()).thenReturn(Country.RUSSIA);
-        Mockito.when(geoService.byIp(startsWith("172."))).thenReturn(locationRUS);
-        Mockito.when(localizationService.locale(Country.RUSSIA)).thenReturn("Добро пожаловать");
-
-        Mockito.when(locationUSA.getCountry()).thenReturn(Country.USA);
-        Mockito.when(geoService.byIp(startsWith("96."))).thenReturn(locationUSA);
-        Mockito.when(localizationService.locale(Country.USA)).thenReturn("Welcome");
-
+        // делаем проверку с ip из ValueSource
         Map<String, String> headers = new HashMap<>();
         headers.put(MessageSenderImpl.IP_ADDRESS_HEADER, ip);
-
+        // в сервис с моками отправляем значения headers
+        // если всё правильно, то в ответ получим, то что ожидали
         String actual = sut.send(headers);
+
         Assertions.assertEquals(text, actual);
-        System.out.println(" = " + text + " " + ip + " is OK...");
+        System.out.println(" = " + text + " (MessageSender test " + ip + " is OK...)");
     }
+
     private static Stream<Arguments> source() {
         String rusText = "Добро пожаловать";
         String engText = "Welcome";
         return Stream.of(Arguments.of(rusText, "172.1.1.1"),
                 Arguments.of(rusText, "172.2.2.2"),
+                Arguments.of(engText, "1.1.1.1"),
+                Arguments.of(engText, "2.2.2.2"),
+                Arguments.of(engText, "127.1.1.1"),
+                Arguments.of(engText, "255.1.1.1"),
                 Arguments.of(engText, "96.1.1.1"),
-                Arguments.of(engText, "96.1.1.1"));
+                Arguments.of(engText, "96.2.2.2"));
     }
 
 }
